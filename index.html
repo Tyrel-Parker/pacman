@@ -205,7 +205,7 @@ function countDots(m) {
 
 // ─── PAC-MAN ─────────────────────────────────────────────────────────────────
 const pac = {
-  x: 13.5, y: 23,   // tile-space position (center of tile)
+  x: 13, y: 21,      // tile-space position (center of tile)
   dir: { x: 0, y: 0 },
   nextDir: { x: 0, y: 0 },
   speed: 0.1,
@@ -216,7 +216,7 @@ const pac = {
 };
 
 function resetPac() {
-  pac.x = 13.5; pac.y = 23;
+  pac.x = 13; pac.y = 21;
   pac.dir = { x: 0, y: 0 };
   pac.nextDir = { x: 0, y: 0 };
   pac.dead = false;
