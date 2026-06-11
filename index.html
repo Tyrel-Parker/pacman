@@ -453,7 +453,9 @@ function advanceNameCursor(dir) {
   nameCursor = Math.max(0, Math.min(2, nameCursor + dir));
 }
 function confirmName() {
-  addToLeaderboard(nameChars.join('').trimEnd() || '???', lastScore);
+  const name = nameChars.join('').trimEnd() || '???';
+  localStorage.setItem('pacman-last-name', name);
+  addToLeaderboard(name, lastScore);
   gameState = 'highscore';
 }
 
@@ -759,7 +761,8 @@ function killPac() {
       setTimeout(() => {
         setMessage('');
         if (qualifiesForLeaderboard(lastScore)) {
-          nameChars = ['A','A','A'];
+          const saved = localStorage.getItem('pacman-last-name') || 'AAA';
+          nameChars = (saved.padEnd(3, ' ').slice(0, 3)).split('');
           nameCursor = 0;
           gameState = 'nameentry';
         } else {
