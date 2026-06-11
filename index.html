@@ -181,7 +181,9 @@ window.addEventListener('resize', resizeCanvas);
 // ─── GAME STATE ──────────────────────────────────────────────────────────────
 let maze, totalDots, score, lives, gameState, frightenedTimer, frightenedFlash;
 let floatingScores = [], freezeTimer = 0;
-// gameState: 'waiting' | 'playing' | 'dying' | 'levelclear' | 'gameover'
+let highScore = parseInt(localStorage.getItem('pacman-high-score') || '0', 10);
+let lastScore = 0, newRecord = false;
+// gameState: 'waiting' | 'playing' | 'dying' | 'levelclear' | 'gameover' | 'highscore'
 
 const DIRS = {
   left:  { x: -1, y:  0 },
@@ -406,8 +408,10 @@ function startLevel() {
 }
 
 function handleStart() {
-  if (gameState === 'waiting' || gameState === 'gameover') {
-    if (gameState === 'gameover') initGame();
+  if (gameState === 'waiting') {
+    startLevel();
+  } else if (gameState === 'highscore' || gameState === 'gameover') {
+    initGame();
     startLevel();
   } else if (gameState === 'dying') {
     respawn();
@@ -662,8 +666,18 @@ function killPac() {
   updateHUD();
   setTimeout(() => {
     if (lives <= 0) {
+      lastScore = score;
+      newRecord = score > highScore;
+      if (newRecord) {
+        highScore = score;
+        localStorage.setItem('pacman-high-score', highScore);
+      }
       gameState = 'gameover';
-      setMessage('GAME OVER — TAP TO RETRY');
+      setMessage('GAME OVER');
+      setTimeout(() => {
+        gameState = 'highscore';
+        setMessage('');
+      }, 2000);
     } else {
       setMessage('TAP TO CONTINUE');
     }
@@ -808,6 +822,49 @@ function drawGhostEyes(x, y, dir, white, pupil) {
   });
 }
 
+function drawHighScoreScreen() {
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+
+  ctx.fillStyle = 'rgba(0,0,10,0.88)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillStyle = '#FFD700';
+  ctx.font = '16px "Press Start 2P", monospace';
+  ctx.fillText('HIGH SCORE', cx, cy - 130);
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '22px "Press Start 2P", monospace';
+  ctx.fillText(String(highScore).padStart(6, '0'), cx, cy - 90);
+
+  if (lastScore > 0) {
+    ctx.fillStyle = '#888888';
+    ctx.font = '9px "Press Start 2P", monospace';
+    ctx.fillText('LAST SCORE', cx, cy - 20);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = '16px "Press Start 2P", monospace';
+    ctx.fillText(String(lastScore).padStart(6, '0'), cx, cy + 10);
+  }
+
+  if (newRecord && Math.floor(Date.now() / 400) % 2 === 0) {
+    ctx.fillStyle = '#FFD700';
+    ctx.font = '11px "Press Start 2P", monospace';
+    ctx.fillText('NEW RECORD!', cx, cy + 60);
+  }
+
+  if (Math.floor(Date.now() / 550) % 2 === 0) {
+    ctx.fillStyle = '#00FFFF';
+    ctx.font = '10px "Press Start 2P", monospace';
+    ctx.fillText('TAP TO PLAY', cx, cy + 130);
+  }
+
+  ctx.restore();
+}
+
 function drawFloatingScores() {
   if (floatingScores.length === 0) return;
   ctx.save();
@@ -828,6 +885,7 @@ function render() {
   drawGhosts();
   drawPac();
   drawFloatingScores();
+  if (gameState === 'highscore') drawHighScoreScreen();
 }
 
 // ─── GAME LOOP ───────────────────────────────────────────────────────────────
