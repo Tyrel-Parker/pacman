@@ -347,6 +347,7 @@ document.addEventListener('keydown', e => {
 
 // Tilt
 let tiltPermissionGranted = false;
+let tiltEventReceived = false, tiltCheckTimer = null;
 const tiltIndicator = document.getElementById('tilt-indicator');
 
 async function requestTiltPermission() {
@@ -363,6 +364,7 @@ async function requestTiltPermission() {
 
 function handleOrientation(e) {
   if (controlMode !== 'tilt') return;
+  tiltEventReceived = true;
   const beta  = e.beta  ?? 0;
   const gamma = e.gamma ?? 0;
   tiltIndicator.textContent = `b${beta.toFixed(0)} g${gamma.toFixed(0)}`;
@@ -397,7 +399,15 @@ modeBtn.addEventListener('click', async () => {
   modeBtn.textContent = MODE_LABELS[controlMode];
   modeBtn.classList.toggle('tilt-active', controlMode === 'tilt');
   tiltIndicator.textContent = controlMode === 'tilt' ? 'TILT ACTIVE' : '';
-  if (controlMode !== 'tilt') tiltIndicator.textContent = '';
+  clearTimeout(tiltCheckTimer);
+  if (controlMode === 'tilt') {
+    tiltEventReceived = false;
+    tiltCheckTimer = setTimeout(() => {
+      if (controlMode === 'tilt' && !tiltEventReceived) {
+        tiltIndicator.textContent = 'BLOCKED — CHECK BROWSER SETTINGS';
+      }
+    }, 2000);
+  }
 });
 
 // ─── LEADERBOARD ─────────────────────────────────────────────────────────────
