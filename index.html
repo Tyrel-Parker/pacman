@@ -578,7 +578,7 @@ function updatePac() {
       totalDots--;
       dotsEaten++;
       if (!fruitState && (dotsEaten === FRUIT_SPAWN_1 || dotsEaten === FRUIT_SPAWN_2)) fruitState = { timer: FRUIT_LIFE };
-      if (totalDots <= 0) { gameState = 'levelclear'; setMessage('LEVEL CLEAR!'); }
+      if (totalDots <= 0) { gameState = 'levelclear'; setMessage(isMobile ? 'LEVEL CLEAR! TAP TO CONTINUE' : 'LEVEL CLEAR! PRESS SPACE'); }
     } else if (cell === 3) {
       maze[cr][cc] = 2;
       score += 50;
