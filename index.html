@@ -271,7 +271,8 @@ const PHASE_TIMES = [700, 2000, 700, 2000, 400, 3000, 400, Infinity];
 let phaseIndex, phaseTick;
 
 // ─── CONTROLS ────────────────────────────────────────────────────────────────
-let controlMode = ('ontouchstart' in window || navigator.maxTouchPoints > 0) ? 'swipe' : 'keys';
+const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+let controlMode = isMobile ? 'swipe' : 'keys';
 let pendingDir = null;
 
 // Mode toggle button
@@ -926,7 +927,7 @@ function drawLeaderboard() {
     ctx.fillStyle = '#00FFFF';
     ctx.font = '10px "Press Start 2P", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('TAP TO PLAY', cx, 330);
+    ctx.fillText(isMobile ? 'TAP TO PLAY' : 'PRESS SPACE TO PLAY', cx, 330);
   }
 
   ctx.restore();
@@ -975,9 +976,9 @@ function drawNameEntry() {
     ctx.beginPath(); ctx.moveTo(sx, slotY+42); ctx.lineTo(sx-8,slotY+32); ctx.lineTo(sx+8,slotY+32); ctx.closePath(); ctx.fill();
   });
 
-  ctx.fillStyle = '#333355';
-  ctx.font = '7px "Press Start 2P", monospace';
-  ctx.fillText('UP/DN: LETTER    LT/RT: MOVE    ENTER: OK', cx, 355);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '9px "Press Start 2P", monospace';
+  ctx.fillText(isMobile ? 'UP/DN:LETTER  LT/RT:MOVE  TAP:NEXT' : 'UP/DN: LETTER    LT/RT: MOVE    ENTER: OK', cx, 355);
 
   ctx.restore();
 }
