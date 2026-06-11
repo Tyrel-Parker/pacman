@@ -271,7 +271,7 @@ const PHASE_TIMES = [700, 2000, 700, 2000, 400, 3000, 400, Infinity];
 let phaseIndex, phaseTick;
 
 // ─── CONTROLS ────────────────────────────────────────────────────────────────
-let controlMode = 'keys'; // 'keys' | 'swipe' | 'tilt'
+let controlMode = ('ontouchstart' in window || navigator.maxTouchPoints > 0) ? 'swipe' : 'keys';
 let pendingDir = null;
 
 // Mode toggle button
@@ -361,15 +361,13 @@ async function requestTiltPermission() {
   return true; // Android / desktop — no permission needed
 }
 
-window.addEventListener('deviceorientation', e => {
+function handleOrientation(e) {
   if (controlMode !== 'tilt') return;
+  const beta  = e.beta  ?? 0;
+  const gamma = e.gamma ?? 0;
+  tiltIndicator.textContent = `b${beta.toFixed(0)} g${gamma.toFixed(0)}`;
   if (gameState !== 'playing') return;
-  const beta  = e.beta  || 0; // front-back tilt  (-180..180)
-  const gamma = e.gamma || 0; // left-right tilt  (-90..90)
-
-  tiltIndicator.textContent = `β${beta.toFixed(0)}° γ${gamma.toFixed(0)}°`;
-
-  const THRESH = 12;
+  const THRESH = 10;
   if (Math.abs(gamma) > Math.abs(beta)) {
     if (gamma >  THRESH) pendingDir = DIRS.right;
     if (gamma < -THRESH) pendingDir = DIRS.left;
@@ -377,10 +375,13 @@ window.addEventListener('deviceorientation', e => {
     if (beta  >  THRESH) pendingDir = DIRS.down;
     if (beta  < -THRESH) pendingDir = DIRS.up;
   }
-});
+}
+window.addEventListener('deviceorientation', handleOrientation);
+window.addEventListener('deviceorientationabsolute', handleOrientation);
 
 const MODES = ['keys', 'swipe', 'tilt'];
 const MODE_LABELS = { keys: '⌨ KEYS', swipe: '👆 SWIPE', tilt: '📱 TILT' };
+modeBtn.textContent = MODE_LABELS[controlMode];
 
 modeBtn.addEventListener('click', async () => {
   const nextIndex = (MODES.indexOf(controlMode) + 1) % MODES.length;
