@@ -111,8 +111,7 @@
   <canvas id="c"></canvas>
   <div id="message">PRESS SPACE TO START</div>
   <div id="tilt-indicator" id="tilt-indicator"></div>
-  <div id="debug-log" style="font-family:monospace;font-size:11px;color:#00ff88;background:#001a00;padding:6px 8px;max-width:560px;width:100%;word-break:break-all;max-height:80px;overflow-y:auto;user-select:text;-webkit-user-select:text;"></div>
-  <div id="error-log" style="font-family:monospace;font-size:10px;color:#ff4444;background:#1a0000;padding:4px 8px;max-width:560px;width:100%;word-break:break-all;display:none;max-height:80px;overflow-y:auto;"></div>
+<div id="error-log" style="font-family:monospace;font-size:10px;color:#ff4444;background:#1a0000;padding:4px 8px;max-width:560px;width:100%;word-break:break-all;display:none;max-height:80px;overflow-y:auto;"></div>
   <div id="version-num" style="font-family:'Press Start 2P',monospace;font-size:7px;color:#333;letter-spacing:1px;margin-top:4px;">v1.6</div>
 </div>
 
@@ -125,8 +124,6 @@ function logError(msg) {
 }
 window.addEventListener('error', e => logError('ERR: ' + e.message + ' (' + e.lineno + ')'));
 window.addEventListener('unhandledrejection', e => logError('REJ: ' + e.reason));
-const debugLog = document.getElementById('debug-log');
-function dbg(msg) { document.getElementById('debug-log').textContent = msg; }
 
 // ─── MAZE ────────────────────────────────────────────────────────────────────
 // 0=dot 1=wall 2=empty 3=energizer 4=ghost-house-door 5=ghost-house-floor
@@ -178,12 +175,12 @@ function resizeCanvas() {
   const scale = Math.min(maxW / canvas.width, maxH / canvas.height, 1);
   canvas.style.width  = (canvas.width  * scale) + 'px';
   canvas.style.height = (canvas.height * scale) + 'px';
-  dbg('cvs:' + canvas.width + 'x' + canvas.height + ' win:' + window.innerWidth + 'x' + window.innerHeight + ' scale:' + scale.toFixed(2) + ' styled:' + canvas.style.width + 'x' + canvas.style.height);
 }
 window.addEventListener('resize', resizeCanvas);
 
 // ─── GAME STATE ──────────────────────────────────────────────────────────────
 let maze, totalDots, score, lives, gameState, frightenedTimer, frightenedFlash;
+let floatingScores = [], freezeTimer = 0;
 // gameState: 'waiting' | 'playing' | 'dying' | 'levelclear' | 'gameover'
 
 const DIRS = {
@@ -390,6 +387,8 @@ function initGame() {
   frightenedTimer = 0;
   phaseIndex = 0;
   phaseTick = 0;
+  floatingScores = [];
+  freezeTimer = 0;
   resetPac();
   resetGhosts();
   updateHUD();
@@ -402,6 +401,8 @@ function startLevel() {
   frightenedTimer = 0;
   phaseIndex = 0;
   phaseTick = 0;
+  floatingScores = [];
+  freezeTimer = 0;
 }
 
 function handleStart() {
@@ -544,7 +545,7 @@ function ghostNeighbors(g) {
     if (ny < 0 || ny >= ROWS) return false;
     const cell = maze[ny][nx];
     if (cell === 1) return false;
-    if (cell === 4 && g.mode !== 'eaten') return false;
+    if ((cell === 4 || cell === 5) && g.mode !== 'eaten') return false;
     return true;
   });
 }
@@ -641,6 +642,7 @@ function checkCollisions() {
         score += pts;
         updateHUD();
         showFloatingScore(pts, g.x, g.y);
+        freezeTimer = 50;
       } else {
         killPac();
       }
@@ -649,9 +651,7 @@ function checkCollisions() {
 }
 
 function showFloatingScore(pts, gx, gy) {
-  // simple: just add to score message briefly
-  setMessage(`+${pts}`);
-  setTimeout(() => { if (gameState === 'playing') setMessage(''); }, 600);
+  floatingScores.push({ x: gx, y: gy, pts, timer: 50 });
 }
 
 function killPac() {
@@ -808,15 +808,26 @@ function drawGhostEyes(x, y, dir, white, pupil) {
   });
 }
 
-let renderCount = 0;
+function drawFloatingScores() {
+  if (floatingScores.length === 0) return;
+  ctx.save();
+  ctx.font = 'bold 10px "Press Start 2P", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#00FFFF';
+  floatingScores.forEach(s => {
+    ctx.fillText(String(s.pts), s.x * CELL + CELL / 2, s.y * CELL + CELL / 2);
+  });
+  ctx.restore();
+}
+
 function render() {
-  renderCount++;
-  if (renderCount <= 3) dbg(debugLog.textContent + ' | render#' + renderCount);
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   drawMaze();
   drawGhosts();
   drawPac();
+  drawFloatingScores();
 }
 
 // ─── GAME LOOP ───────────────────────────────────────────────────────────────
@@ -829,26 +840,32 @@ function loop(ts) {
   lastTime = ts;
 
   if (gameState === 'playing') {
-    // phase timer
-    phaseTick++;
-    if (phaseTick >= PHASE_TIMES[phaseIndex] && phaseIndex < PHASE_TIMES.length - 1) {
-      phaseIndex++;
-      phaseTick = 0;
-    }
+    floatingScores = floatingScores.filter(s => --s.timer > 0);
 
-    if (frightenedTimer > 0) {
-      frightenedTimer--;
-      if (frightenedTimer === 0) {
-        eatCombo = 0;
-        ghosts.forEach(g => {
-          if (g.mode === 'frightened') g.mode = phaseIndex % 2 === 0 ? 'scatter' : 'chase';
-        });
+    if (freezeTimer > 0) {
+      freezeTimer--;
+    } else {
+      // phase timer
+      phaseTick++;
+      if (phaseTick >= PHASE_TIMES[phaseIndex] && phaseIndex < PHASE_TIMES.length - 1) {
+        phaseIndex++;
+        phaseTick = 0;
       }
-    }
 
-    updatePac();
-    ghosts.forEach(g => { updateGhostMode(g); moveGhost(g); });
-    checkCollisions();
+      if (frightenedTimer > 0) {
+        frightenedTimer--;
+        if (frightenedTimer === 0) {
+          eatCombo = 0;
+          ghosts.forEach(g => {
+            if (g.mode === 'frightened') g.mode = phaseIndex % 2 === 0 ? 'scatter' : 'chase';
+          });
+        }
+      }
+
+      updatePac();
+      ghosts.forEach(g => { updateGhostMode(g); moveGhost(g); });
+      checkCollisions();
+    }
   }
 
   render();
